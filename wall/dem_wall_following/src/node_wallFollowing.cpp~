@@ -1,0 +1,176 @@
+#include "node_wallFollowing.h"
+//#include <node_wallFollowing.h>
+
+#include <math.h>
+#define PI 3.141592		//!<Mathematical constant (default value: 3.141592).	
+double diffdist;
+double diffangle;
+//Constructor and destructor
+NodeWallFollowing::NodeWallFollowing(ros::Publisher pub, double wallDist, double maxSp, int dir, double pr, double su, double di, double an)
+{
+	wallDistance = wallDist;
+	maxSpeed = maxSp;
+	direction = dir;
+	P = pr;
+	S = su;
+	D = di;
+	angleCoef = an;
+	r = 0;
+	sumR = 0;
+	distMin = 0;	//minimum distance masured by sensor
+	angleMin = 0;	//angle, at which was measured the shortest distance
+	go = 1;			//in case of obstacle, change to 0
+	pubMessage = pub;
+    server_ = new dynamic_reconfigure::Server<dem_wall_following::psdtuneConfig>;
+    //dynamic_reconfigure::Server<psdtuneConfig>::CallbackType cb = boost::bind(&DWAPlannerROS::reconfigureCB, this, _1, _2);
+    f_ = boost::bind(&NodeWallFollowing::reconfigureCB, this, _1, _2);
+    server_->setCallback(f_);
+    bump_count_=0;
+    bump_happen_==false;
+}
+
+
+void NodeWallFollowing::reconfigureCB(dem_wall_following::psdtuneConfig &config, uint32_t level)
+{
+   wallDistance = config.wDst;
+   P=config.P;
+   S=config.S;
+   D=config.D;
+   maxSpeed=config.maxSp;
+   direction=config.wDir;
+   angleCoef=config.an;
+   ROS_INFO("Reconfigure Request: %f %f %f %f %f %d %f",
+             config.wDst, config.P, config.S,
+             config.D, config.maxSp, config.wDir,
+             config.an);
+
+
+}
+
+NodeWallFollowing::~NodeWallFollowing()
+{
+}
+
+//Publisher
+void NodeWallFollowing::publishMessage()
+{
+    //preparing messagekobuki_msgs/BumperEvent
+    if(!bump_happen_)
+    {
+	geometry_msgs::Twist msg;
+	
+	msg.angular.z = direction*(P*r + S*sumR + D*diffR) + angleCoef * (angleMin - PI*direction/2);		//PI regulator
+	diffdist = direction*(P*r + S*sumR + D*diffR;
+	diffangle = angleCoef * (angleMin - PI*direction/2);
+        ROS_INFO("Difference r: wallDistance=%f, distMin=%f, r=%f",wallDistance,distMin,r);
+	ROS_INFO("diffdist=%f,diffangle=%f",diffdist,diffangle);
+	//if (msg.angular.z > 2.0){
+	//	msg.angular.z = 1.0;
+	//}
+	
+	if (distFront < wallDistance){
+		msg.linear.x = 0;
+		//msg.angular.z = 0.0;
+                ROS_INFO("distFront: %f",distFront);
+	}
+    else if (distFront < wallDistance * 2){//sending information about message to console
+
+        msg.linear.x = 0.3*maxSpeed;
+	//msg.angular.z = 0.0;
+	}
+    else if (fabs(angleMin)>1.75){
+		msg.linear.x = 0.4*maxSpeed;
+		//msg.angular.z = 0.0;
+	}
+	else {
+		msg.linear.x = maxSpeed;
+		//msg.angular.z = 0.0;
+	}
+    //sending information about message to console
+
+
+	//sending information about message to console
+
+	ROS_INFO("Sending msg: linear.x=%f, angular.z=%f",msg.linear.x,msg.angular.z);
+	
+	//publishing message
+	pubMessage.publish(msg);
+    }
+}//sending information about message to console
+
+
+
+//Subscriber
+void NodeWallFollowing::messageCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
+{//sending information about message to console
+
+	//Calculation of array size from angle range and angle increment.
+	//int size = (int) ((msg->angle_max - msg->angle_min)/msg->angle_increment);
+	int size = msg->ranges.size();
+    ROS_INFO("array_length: [%d]", size);
+
+	
+    //Variables whith index of highest and lowest value in array.//sending information about message to console
+
+	int minIndex = size*(direction+1)/4;
+	
+	//This cycle goes through array and finds minimum
+	for(int i=(size*(direction+1)/4); i<(size*(direction+3)/4); i++)
+	{
+        if (msg->ranges[i] < msg->ranges[minIndex] && msg->ranges[i] > 0.01){
+
+			minIndex = i;
+		}
+	}
+	
+	//Calculation of angles from indexes and storing data to class variables.
+	angleMin = (minIndex-size/2)*msg->angle_increment;
+	distMin = msg->ranges[minIndex];
+    distFront = msg->ranges[size/2];
+	diffR = 2*(distMin - wallDistance) - r;
+	r = distMin - wallDistance;
+	sumR += r;
+	
+	//Sending info about processed data
+	ROS_INFO("min: angle=%f, distance=%f, front=%f", angleMin, distMin, distFront);
+	
+	//Invoking method for publishing message
+	publishMessage();
+}
+
+void NodeWallFollowing::bumperCallback(const kobuki_msgs::BumperEventConstPtr& msg )
+{
+    if(msg->state==1)
+    {
+
+        bump_count_++;
+        bump_happen_==true;
+        ROS_INFO("*****************+++++++++++++++++++****************");
+        ROS_INFO("*****************+++++++++++++++++++****************");
+        ROS_INFO("Now bumper pressed already happened for %d times", bump_count_);
+        ROS_INFO("*****************+++++++++++++++++++****************");
+        ROS_INFO("*****************+++++++++++++++++++****************");
+        if(direction==1)
+        {
+            geometry_msgs::Twist msg;
+            msg.angular.z = -1.57;
+            msg.linear.x=0.0;
+            pubMessage.publish(msg);
+        }
+        else if (direction==-1)
+        {
+            geometry_msgs::Twist msg;
+            msg.angular.z = 1.57;
+            msg.linear.x=0.0;
+            pubMessage.publish(msg);
+
+        }
+    }
+    else if(msg->state==0)
+    {
+        bump_happen_==false;
+    }
+
+
+}
+

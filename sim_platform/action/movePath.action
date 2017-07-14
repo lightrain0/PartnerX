@@ -1,0 +1,10 @@
+#goal definition
+nav_msgs/Path   path
+int32           start_number
+int32           end_number
+---
+#result definition
+int32           cur_number
+---
+#feedback definition
+int32           cur_number

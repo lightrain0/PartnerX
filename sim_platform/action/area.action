@@ -1,0 +1,8 @@
+#goal definition
+geometry_msgs/PointStamped  origin
+---
+#result definition
+geometry_msgs/PolygonStamped area
+---
+#feedback definition
+geometry_msgs/PolygonStamped area

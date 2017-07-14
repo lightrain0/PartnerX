@@ -1,0 +1,5 @@
+roslaunch pr2_gazebo pr2_wg_world.launch
+roslaunch pr2_gazebo demo_pr2.launch
+roslaunch pr2_gazebo pr2_gmapping.launch
+roslaunch pr2_teleop teleop_keyboard.launch
+ roslaunch pr2_gazebo wallFollow.launch

@@ -1,0 +1,8 @@
+#goal definition
+geometry_msgs/PolygonStamped area
+---
+#result definition
+nav_msgs/Path   path
+---
+#feedback definition
+int32             error

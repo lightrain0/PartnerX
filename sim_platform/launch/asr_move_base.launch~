@@ -1,0 +1,14 @@
+
+
+<launch>
+	<node name="move_base" pkg="asr_move_base" type="move_base" respawn="false" output="screen">
+
+	<param name="controller_frequency" value="5"/>
+	<param name="planner_frequency" value="5"/>
+	<param name="base_local_planner" value="ftc_local_planner/FTCPlanner" />
+	<param name="base_global_planner" value="navfn/NavfnROS"/>
+
+	<rosparam file="$(find sim_platform)/launch/param/global_costmap_params.yaml" command="load" />
+	<rosparam file="$(find sim_platform)/launch/param/ftc_local_planner_params.yaml" command="load" />
+	</node>
+</launch>
